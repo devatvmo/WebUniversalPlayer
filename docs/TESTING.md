@@ -36,7 +36,7 @@
 - [ ] Up from the first channel row returns focus to the selected province.
 - [ ] Down from the province grid enters the channel area without activating a channel.
 - [ ] OK on a prototype channel shows the not-yet-connected notice.
-- [ ] Back returns focus from channel area to province selection.
+- [ ] Escape/Backspace returns focus from channel area to province selection when delivered to the page.\n- [ ] Android TV hardware Back key is integrated with page-level focus navigation (native bridge pending).
 - [ ] Settings dialog opens, closes and restores focus.
 
 ### Not included in this prototype
