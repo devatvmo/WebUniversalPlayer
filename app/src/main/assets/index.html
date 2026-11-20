@@ -2,32 +2,363 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="dark">
-  <title>WebUniversalPlayer</title>
+  <title>网页通用播放器</title>
   <style>
-    * { box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; margin: 0; }
-    body {
-      display: grid;
-      place-items: center;
-      background: #10141c;
-      color: #f4f7fb;
-      font-family: sans-serif;
-      text-align: center;
+    :root {
+      color-scheme: dark;
+      --bg: #08182b;
+      --panel: #102945;
+      --panel-soft: #173554;
+      --tile: #1b3b5c;
+      --tile-hover: #244b70;
+      --text: #f3f7fc;
+      --muted: #a9bdd2;
+      --blue: #35a5ff;
+      --blue-soft: rgba(53, 165, 255, .22);
+      --gap: clamp(10px, 1vw, 18px);
+      --radius: clamp(10px, .8vw, 16px);
     }
-    main { padding: 4vw; }
-    h1 { margin: 0 0 1rem; font-size: clamp(2rem, 5vw, 4rem); }
-    p { margin: .5rem 0; color: #aab6c8; font-size: clamp(1rem, 2vw, 1.5rem); }
-    .state { margin-top: 2rem; color: #83d6ad; }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; min-height: 100%; margin: 0; }
+    body {
+      min-height: 100vh;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse at 78% 0%, rgba(27, 103, 164, .28), transparent 38%),
+        linear-gradient(135deg, #07172a, #0b2038 55%, #0a1b30);
+      color: var(--text);
+      font-family: "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+      font-size: clamp(15px, 1.05vw, 21px);
+    }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    .app { height: 100vh; min-height: 560px; display: flex; flex-direction: column; padding: clamp(16px, 1.8vw, 34px) clamp(20px, 2.5vw, 48px) 14px; gap: var(--gap); }
+    .topbar { display: flex; align-items: center; justify-content: space-between; min-height: clamp(58px, 7vh, 82px); gap: 24px; }
+    .brand { display: flex; align-items: center; gap: 16px; min-width: 0; }
+    .brand-mark { width: clamp(44px, 4vw, 68px); aspect-ratio: 1; display: grid; place-items: center; border-radius: 18px; background: linear-gradient(145deg, #36b2ff, #1267c7); box-shadow: 0 8px 28px rgba(20, 126, 220, .28); font-size: clamp(25px, 2.4vw, 42px); font-weight: 900; }
+    .brand-title { font-size: clamp(22px, 2vw, 36px); font-weight: 800; letter-spacing: .04em; white-space: nowrap; }
+    .brand-subtitle { margin-top: 4px; color: var(--muted); font-size: clamp(12px, .9vw, 17px); }
+    .top-actions { display: flex; align-items: center; gap: 10px; }
+    .top-button { min-height: 48px; padding: 0 clamp(16px, 1.5vw, 28px); border: 1px solid transparent; border-radius: 999px; background: transparent; color: #dce9f6; cursor: pointer; }
+    .top-button[aria-current="page"] { background: linear-gradient(135deg, #167de1, #0755ae); box-shadow: 0 5px 20px rgba(22, 125, 225, .3); }
+    .top-button .symbol { margin-right: 8px; }
+    .content { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--gap); }
+    .section { min-width: 0; border: 1px solid rgba(126, 174, 216, .12); border-radius: var(--radius); background: linear-gradient(145deg, rgba(20, 51, 81, .94), rgba(14, 39, 64, .94)); box-shadow: 0 12px 32px rgba(0, 0, 0, .12); padding: clamp(14px, 1.25vw, 24px); }
+    .province-section { flex: 0 0 auto; }
+    .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 14px; }
+    .section-title { display: flex; align-items: center; gap: 12px; font-size: clamp(18px, 1.35vw, 25px); font-weight: 750; }
+    .section-title::before { content: ""; width: 5px; height: 1.2em; border-radius: 8px; background: var(--blue); }
+    .province-tools { display: flex; align-items: center; gap: 12px; }
+    .search-wrap { width: clamp(190px, 18vw, 310px); display: flex; align-items: center; gap: 9px; padding: 0 14px; min-height: 42px; border-radius: 999px; background: rgba(4, 20, 37, .5); border: 1px solid rgba(150, 190, 225, .13); color: var(--muted); }
+    .search-wrap input { width: 100%; min-width: 0; border: 0; outline: 0; color: var(--text); background: transparent; }
+    .search-wrap input::placeholder { color: #8fa8c1; }
+    .province-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: clamp(7px, .65vw, 12px); }
+    .province-button { min-width: 0; min-height: clamp(42px, 5.1vh, 58px); padding: 8px 5px; border: 1px solid rgba(145, 183, 218, .07); border-radius: 10px; background: linear-gradient(145deg, #254766, #1d3b59); color: #eaf3fc; font-weight: 650; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .province-button.selected { border-color: rgba(83, 184, 255, .9); background: linear-gradient(145deg, #176bc3, #11549d); box-shadow: inset 0 0 0 1px rgba(125, 207, 255, .32); }
+    .more-button { background: rgba(8, 29, 50, .65); color: #c4d9ed; }
+    .channel-section { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .channel-heading-meta { color: var(--muted); font-size: .82em; white-space: nowrap; }
+    .channel-scroll { flex: 1; min-height: 0; overflow: auto; padding: 3px 4px 8px; scrollbar-width: thin; scrollbar-color: #42698d transparent; }
+    .channel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(clamp(145px, 13vw, 230px), 1fr)); gap: clamp(10px, .9vw, 17px); align-content: start; }
+    .channel-card { min-height: clamp(112px, 15vh, 165px); padding: 14px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; border: 1px solid rgba(147, 188, 222, .08); border-radius: 13px; background: linear-gradient(145deg, #244766, #1b3957); cursor: pointer; text-align: center; }
+    .channel-card:hover { background: var(--tile-hover); }
+    .channel-logo { width: clamp(46px, 4.4vw, 72px); height: clamp(42px, 4vw, 64px); display: grid; place-items: center; border-radius: 12px; background: rgba(5, 22, 40, .45); color: #b9d8f3; font-size: clamp(20px, 1.8vw, 30px); font-weight: 800; letter-spacing: -.05em; }
+    .channel-name { max-width: 100%; font-size: clamp(14px, 1vw, 19px); line-height: 1.35; font-weight: 650; overflow-wrap: anywhere; }
+    .channel-note { color: #91abc4; font-size: 11px; }
+    .empty-state { min-height: 210px; display: grid; place-content: center; justify-items: center; gap: 12px; color: var(--muted); text-align: center; }
+    .empty-icon { font-size: 42px; opacity: .75; }
+    .footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 30px; color: #a9bfd4; font-size: clamp(12px, .8vw, 15px); }
+    .key-hints { display: flex; flex-wrap: wrap; gap: clamp(14px, 2vw, 34px); }
+    .hint strong { color: #e4eff9; margin-right: 5px; }
+    button:focus-visible, input:focus-visible, .focus-ring:focus-visible { outline: 3px solid #72c6ff; outline-offset: 3px; box-shadow: 0 0 0 6px rgba(53, 165, 255, .2), 0 0 22px rgba(53, 165, 255, .35); }
+    .channel-card:focus, .province-button:focus, .top-button:focus { outline: 3px solid #72c6ff; outline-offset: 3px; box-shadow: 0 0 0 6px rgba(53, 165, 255, .18), 0 0 24px rgba(53, 165, 255, .32); }
+    .toast { position: fixed; left: 50%; bottom: 70px; transform: translate(-50%, 16px); padding: 12px 20px; border: 1px solid rgba(150, 200, 240, .22); border-radius: 999px; background: rgba(5, 20, 36, .96); color: #eff7ff; opacity: 0; pointer-events: none; transition: .18s ease; z-index: 5; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .dialog-backdrop { position: fixed; inset: 0; display: none; place-items: center; background: rgba(0, 0, 0, .58); z-index: 10; }
+    .dialog-backdrop.open { display: grid; }
+    .dialog { width: min(520px, 80vw); padding: 28px; border: 1px solid rgba(150, 200, 240, .25); border-radius: 18px; background: #102945; box-shadow: 0 24px 80px rgba(0, 0, 0, .45); }
+    .dialog h2 { margin: 0 0 12px; }
+    .dialog p { color: var(--muted); line-height: 1.7; }
+    .dialog button { min-height: 44px; padding: 0 24px; border: 0; border-radius: 10px; background: #176bc3; cursor: pointer; }
+    @media (max-width: 1100px) {
+      .province-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+      .app { padding-left: 18px; padding-right: 18px; }
+    }
+    @media (max-height: 700px) {
+      .app { min-height: 480px; padding-top: 12px; padding-bottom: 8px; gap: 8px; }
+      .section { padding: 12px; }
+      .section-heading { margin-bottom: 9px; }
+      .province-button { min-height: 36px; }
+      .channel-card { min-height: 95px; }
+    }
   </style>
 </head>
 <body>
-  <main>
-    <h1>WebUniversalPlayer</h1>
-    <p>Android TV 通用网页直播播放器</p>
-    <p class="state">基础工程已就绪</p>
-    <p>后续阶段将接入电视台直播网页与频道适配器</p>
-  </main>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">▶</div>
+        <div>
+          <div class="brand-title">网页通用播放器</div>
+          <div class="brand-subtitle">全国广播电视 · 官方直播频道</div>
+        </div>
+      </div>
+      <nav class="top-actions" aria-label="主导航">
+        <button class="top-button" aria-current="page" data-action="home"><span class="symbol">⌂</span>首页</button>
+        <button class="top-button" data-action="settings"><span class="symbol">⚙</span>设置</button>
+      </nav>
+    </header>
+
+    <main class="content">
+      <section class="section province-section" aria-labelledby="province-heading">
+        <div class="section-heading">
+          <div class="section-title" id="province-heading">选择省份</div>
+          <div class="province-tools">
+            <label class="search-wrap" aria-label="搜索省份">
+              <span aria-hidden="true">⌕</span>
+              <input id="province-search" type="search" placeholder="搜索省份…" autocomplete="off">
+            </label>
+          </div>
+        </div>
+        <div class="province-grid" id="province-grid"></div>
+      </section>
+
+      <section class="section channel-section" aria-labelledby="channel-heading">
+        <div class="section-heading">
+          <div class="section-title" id="channel-heading"><span id="selected-province">河北</span> · 电视频道</div>
+          <div class="channel-heading-meta" id="channel-count">8 个频道</div>
+        </div>
+        <div class="channel-scroll" id="channel-scroll">
+          <div class="channel-grid" id="channel-grid"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="key-hints">
+        <span class="hint"><strong>方向键</strong>移动焦点</span>
+        <span class="hint"><strong>确定</strong>选择</span>
+        <span class="hint"><strong>返回</strong>上一级</span>
+      </div>
+      <span>频道入口将按官方平台逐步接入</span>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="dialog-backdrop" id="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="dialog">
+      <h2 id="settings-title">设置</h2>
+      <p>设置功能将在后续阶段逐步开放。本版先完成首页布局、省份选择、频道网格和遥控器焦点操作。</p>
+      <button id="close-settings">知道了</button>
+    </div>
+  </div>
+
+  <script>
+    const provinces = [
+      "北京","天津","上海","重庆","河北","山西","内蒙古","辽宁",
+      "吉林","黑龙江","江苏","浙江","安徽","福建","江西","山东",
+      "河南","湖北","湖南","广东","广西","海南","四川","贵州",
+      "云南","西藏","陕西","甘肃","青海","宁夏","新疆","香港",
+      "澳门","台湾"
+    ];
+
+    // Only channels already confirmed during the project research are listed here.
+    // Official station logos and live URLs will be added after their sources are verified.
+    const channelData = {
+      "河北": [
+        "河北卫视","经济生活频道","三农频道","河北都市频道",
+        "文旅体育频道","少儿科教频道","河北公共频道","三佳购物频道"
+      ],
+      "山西": ["山西卫视","黄河电视台"],
+      "上海": ["东方卫视","新闻综合","魔都眼","第一财经","新纪实","五星体育","都市频道","哈哈炫动"]
+    };
+
+    const provinceGrid = document.getElementById("province-grid");
+    const channelGrid = document.getElementById("channel-grid");
+    const channelScroll = document.getElementById("channel-scroll");
+    const selectedProvinceLabel = document.getElementById("selected-province");
+    const channelCount = document.getElementById("channel-count");
+    const searchInput = document.getElementById("province-search");
+    const toast = document.getElementById("toast");
+    const settingsDialog = document.getElementById("settings-dialog");
+    let selectedProvince = "河北";
+    let showAllProvinces = false;
+    let toastTimer;
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove("show"), 2100);
+    }
+
+    function visibleProvinces() {
+      const query = searchInput.value.trim().toLowerCase();
+      const filtered = provinces.filter(name => name.toLowerCase().includes(query));
+      return (showAllProvinces || query) ? filtered : filtered.slice(0, 24);
+    }
+
+    function renderProvinces() {
+      provinceGrid.replaceChildren();
+      const list = visibleProvinces();
+      list.forEach(name => {
+        const button = document.createElement("button");
+        button.className = "province-button" + (name === selectedProvince ? " selected" : "");
+        button.type = "button";
+        button.textContent = name;
+        button.dataset.province = name;
+        button.setAttribute("aria-pressed", String(name === selectedProvince));
+        button.addEventListener("click", () => selectProvince(name));
+        provinceGrid.append(button);
+      });
+
+      if (!searchInput.value.trim() && provinces.length > 24) {
+        const more = document.createElement("button");
+        more.className = "province-button more-button";
+        more.type = "button";
+        more.textContent = showAllProvinces ? "收起 ▲" : "更多 ▼";
+        more.dataset.action = "more";
+        more.addEventListener("click", () => {
+          showAllProvinces = !showAllProvinces;
+          renderProvinces();
+          const selected = provinceGrid.querySelector('[data-province="' + CSS.escape(selectedProvince) + '"]');
+          (selected || provinceGrid.querySelector("button"))?.focus();
+        });
+        provinceGrid.append(more);
+      }
+    }
+
+    function renderChannels() {
+      selectedProvinceLabel.textContent = selectedProvince;
+      channelGrid.replaceChildren();
+      const channels = channelData[selectedProvince] || [];
+      if (!channels.length) {
+        channelCount.textContent = "待收录";
+        const empty = document.createElement("div");
+        empty.className = "empty-state";
+        empty.style.gridColumn = "1 / -1";
+        empty.innerHTML = '<div class="empty-icon" aria-hidden="true">▣</div><strong>该地区频道正在整理中</strong><span>确认官方直播入口后，将在这里显示频道</span>';
+        channelGrid.append(empty);
+        return;
+      }
+
+      channelCount.textContent = channels.length + " 个已确认频道";
+      channels.forEach(name => {
+        const card = document.createElement("button");
+        card.className = "channel-card";
+        card.type = "button";
+        card.dataset.channel = name;
+        card.innerHTML = '<span class="channel-logo" aria-label="官方台标待核实">TV</span><span class="channel-name"></span><span class="channel-note">官方台标待接入</span>';
+        card.querySelector(".channel-name").textContent = name;
+        card.addEventListener("click", () => showToast("频道入口尚未接入，本版暂不启动直播"));
+        channelGrid.append(card);
+      });
+      channelScroll.scrollTop = 0;
+    }
+
+    function selectProvince(name) {
+      selectedProvince = name;
+      renderProvinces();
+      renderChannels();
+      // Keep focus in the province zone; selecting a province never starts playback.
+      const active = provinceGrid.querySelector('[data-province="' + CSS.escape(name) + '"]');
+      active?.focus();
+    }
+
+    function focusablesIn(container) {
+      return Array.from(container.querySelectorAll("button, input")).filter(el => !el.disabled && el.getClientRects().length);
+    }
+
+    function moveInGrid(current, container, key) {
+      const items = focusablesIn(container);
+      const currentRect = current.getBoundingClientRect();
+      const cx = currentRect.left + currentRect.width / 2;
+      const cy = currentRect.top + currentRect.height / 2;
+      const candidates = items.filter(item => item !== current).map(item => {
+        const r = item.getBoundingClientRect();
+        const x = r.left + r.width / 2;
+        const y = r.top + r.height / 2;
+        const dx = x - cx, dy = y - cy;
+        const inDirection = key === "ArrowLeft" ? dx < -2 :
+          key === "ArrowRight" ? dx > 2 :
+          key === "ArrowUp" ? dy < -2 : dy > 2;
+        if (!inDirection) return null;
+        const primary = key === "ArrowLeft" || key === "ArrowRight" ? Math.abs(dx) : Math.abs(dy);
+        const secondary = key === "ArrowLeft" || key === "ArrowRight" ? Math.abs(dy) : Math.abs(dx);
+        return { item, score: primary + secondary * 2.15 };
+      }).filter(Boolean).sort((a,b) => a.score - b.score);
+      if (candidates.length) {
+        candidates[0].item.focus();
+        candidates[0].item.scrollIntoView({block:"nearest", inline:"nearest"});
+        return true;
+      }
+      return false;
+    }
+
+    document.addEventListener("keydown", event => {
+      const key = event.key;
+      const target = event.target;
+      if (settingsDialog.classList.contains("open")) {
+        if (key === "Escape" || key === "Backspace") {
+          settingsDialog.classList.remove("open");
+          document.querySelector('[data-action="settings"]').focus();
+          event.preventDefault();
+        }
+        return;
+      }
+
+      if (target === searchInput && !key.startsWith("Arrow")) return;
+      if (key === "ArrowLeft" || key === "ArrowRight" || key === "ArrowUp" || key === "ArrowDown") {
+        const provinceButton = target.closest?.(".province-button");
+        const channelCard = target.closest?.(".channel-card");
+        if (provinceButton && moveInGrid(provinceButton, provinceGrid, key)) event.preventDefault();
+        else if (channelCard && moveInGrid(channelCard, channelGrid, key)) event.preventDefault();
+        else if (key === "ArrowDown" && provinceButton) {
+          channelGrid.querySelector("button")?.focus();
+          event.preventDefault();
+        } else if (key === "ArrowUp" && channelCard) {
+          provinceGrid.querySelector('[data-province="' + CSS.escape(selectedProvince) + '"]')?.focus();
+          event.preventDefault();
+        }
+      }
+      if (key === "Escape" || key === "Backspace") {
+        if (target === searchInput && searchInput.value) {
+          searchInput.value = "";
+          renderProvinces();
+          event.preventDefault();
+        } else if (target.closest?.(".channel-section")) {
+          provinceGrid.querySelector('[data-province="' + CSS.escape(selectedProvince) + '"]')?.focus();
+          event.preventDefault();
+        }
+      }
+    });
+
+    searchInput.addEventListener("input", () => {
+      renderProvinces();
+      const first = provinceGrid.querySelector("button");
+      if (document.activeElement !== searchInput) first?.focus();
+    });
+    document.querySelector('[data-action="home"]').addEventListener("click", () => {
+      searchInput.value = "";
+      showAllProvinces = false;
+      renderProvinces();
+      renderChannels();
+      provinceGrid.querySelector('[data-province="' + CSS.escape(selectedProvince) + '"]')?.focus();
+    });
+    document.querySelector('[data-action="settings"]').addEventListener("click", () => {
+      settingsDialog.classList.add("open");
+      document.getElementById("close-settings").focus();
+    });
+    document.getElementById("close-settings").addEventListener("click", () => {
+      settingsDialog.classList.remove("open");
+      document.querySelector('[data-action="settings"]').focus();
+    });
+
+    renderProvinces();
+    renderChannels();
+    provinceGrid.querySelector('[data-province="' + CSS.escape(selectedProvince) + '"]')?.focus();
+  </script>
 </body>
 </html>
