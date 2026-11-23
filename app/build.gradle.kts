@@ -17,6 +17,11 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    buildFeatures {
+        // AGP 8+ does not generate BuildConfig unless explicitly enabled.
+        buildConfig = true
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
